@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weather</title>
+<style>
+  :root {
+    --bg: #f0f4f8;
+    --surface: #ffffff;
+    --text: #1a202c;
+    --muted: #718096;
+    --accent: #3182ce;
+    --accent-light: #ebf8ff;
+    --card-bg: #ffffff;
+    --shadow: 0 1px 4px rgba(0,0,0,0.10);
+    --radius: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-light: #121d2f;
+      --card-bg: #1c2128;
+      --shadow: 0 1px 4px rgba(0,0,0,0.4);
+    }
+  }
+
+  /* Weather condition accent colors */
+  .cond-clear    { --accent: #f6ad55; --accent-light: #fffaf0; }
+  .cond-cloudy   { --accent: #a0aec0; --accent-light: #f7fafc; }
+  .cond-rain     { --accent: #4299e1; --accent-light: #ebf8ff; }
+  .cond-snow     { --accent: #90cdf4; --accent-light: #e8f4fd; }
+  .cond-thunder  { --accent: #9f7aea; --accent-light: #faf5ff; }
+  .cond-fog      { --accent: #cbd5e0; --accent-light: #f7fafc; }
+
+  @media (prefers-color-scheme: dark) {
+    .cond-clear    { --accent: #f6ad55; --accent-light: #2d1f00; }
+    .cond-cloudy   { --accent: #a0aec0; --accent-light: #1a1f24; }
+    .cond-rain     { --accent: #63b3ed; --accent-light: #0f1f2e; }
+    .cond-snow     { --accent: #90cdf4; --accent-light: #0a1a26; }
+    .cond-thunder  { --accent: #b794f4; --accent-light: #1a0f2e; }
+    .cond-fog      { --accent: #a0aec0; --accent-light: #1a1f24; }
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px 16px 48px;
+    transition: background 0.3s, color 0.3s;
+  }
+
+  .container {
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 16px;
+    color: var(--accent);
+  }
+
+  .search-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+
+  .search-input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1.5px solid var(--accent);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .search-input:focus {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+
+  .search-btn {
+    padding: 10px 18px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    white-space: nowrap;
+  }
+  .search-btn:hover { opacity: 0.85; }
+  .search-btn:disabled { opacity: 0.5; cursor: default; }
+
+  .current-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 24px 24px 20px;
+    margin-bottom: 20px;
+    border-top: 4px solid var(--accent);
+    transition: border-color 0.4s;
+  }
+
+  .current-city {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+
+  .current-date {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  .current-main {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+
+  .current-icon {
+    font-size: 52px;
+    line-height: 1;
+  }
+
+  .current-temp {
+    font-size: 56px;
+    font-weight: 300;
+    line-height: 1;
+    color: var(--accent);
+  }
+
+  .current-desc {
+    font-size: 15px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .current-meta {
+    display: flex;
+    gap: 20px;
+    font-size: 13px;
+    color: var(--muted);
+    border-top: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+    padding-top: 12px;
+    margin-top: 4px;
+  }
+
+  .current-meta span { display: flex; align-items: center; gap: 4px; }
+
+  .forecast-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .forecast-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+  }
+
+  .forecast-card {
+    background: var(--card-bg);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    padding: 12px 6px;
+    text-align: center;
+    border-top: 3px solid var(--accent);
+    transition: border-color 0.4s;
+  }
+
+  .fc-day   { font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; }
+  .fc-icon  { font-size: 24px; margin-bottom: 4px; }
+  .fc-high  { font-size: 15px; font-weight: 700; color: var(--text); }
+  .fc-low   { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .fc-desc  { font-size: 10px; color: var(--muted); margin-top: 4px; line-height: 1.3; }
+
+  /* ---- Hourly section ---- */
+  .hourly-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px 16px 10px;
+    margin-bottom: 20px;
+    border-top: 4px solid var(--accent);
+    transition: border-color 0.4s;
+  }
+
+  .hourly-chart-wrap {
+    width: 100%;
+    overflow: hidden;
+    margin-bottom: 2px;
+  }
+
+  .hourly-scroll {
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 6px;
+    scroll-snap-type: x mandatory;
+  }
+  .hourly-scroll::-webkit-scrollbar { display: none; }
+
+  .hour-item {
+    flex: 0 0 52px;
+    text-align: center;
+    scroll-snap-align: start;
+    padding: 6px 2px;
+    border-radius: 8px;
+    transition: background 0.15s;
+  }
+  .hour-item.now {
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+  }
+  .hour-item .h-time  { font-size: 11px; color: var(--muted); font-weight: 600; }
+  .hour-item .h-icon  { font-size: 18px; margin: 3px 0; }
+  .hour-item .h-temp  { font-size: 13px; font-weight: 700; color: var(--text); }
+  .hour-item.now .h-temp { color: var(--accent); }
+
+  .error-msg {
+    background: #fff5f5;
+    color: #c53030;
+    border: 1px solid #feb2b2;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 14px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  @media (prefers-color-scheme: dark) {
+    .error-msg { background: #2d0a0a; color: #fc8181; border-color: #9b2c2c; }
+  }
+
+  .loading {
+    text-align: center;
+    color: var(--muted);
+    padding: 32px;
+    font-size: 14px;
+    display: none;
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 20px; height: 20px;
+    border: 2px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .fallback-badge {
+    display: none;
+    font-size: 11px;
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+    color: var(--accent);
+    border-radius: 4px;
+    padding: 2px 7px;
+    margin-left: 8px;
+    font-weight: 600;
+  }
+
+  /* AQI section */
+  .aqi-section {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+
+  .aqi-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .aqi-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .aqi-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+  }
+  .aqi-badge.aqi-good        { background: #38a169; }
+  .aqi-badge.aqi-fair        { background: #68d391; color: #1a202c; }
+  .aqi-badge.aqi-moderate    { background: #d69e2e; }
+  .aqi-badge.aqi-poor        { background: #dd6b20; }
+  .aqi-badge.aqi-very-poor   { background: #e53e3e; }
+  .aqi-badge.aqi-hazardous   { background: #805ad5; }
+
+  .aqi-bar-track {
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(to right, #38a169, #68d391, #ecc94b, #dd6b20, #e53e3e, #805ad5);
+    position: relative;
+    margin-bottom: 10px;
+  }
+  .aqi-bar-thumb {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid #333;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    transition: left 0.4s ease;
+  }
+
+  .aqi-pollutants {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+  }
+
+  .aqi-pill {
+    background: color-mix(in srgb, var(--accent) 10%, var(--card-bg));
+    border-radius: 8px;
+    padding: 7px 6px;
+    text-align: center;
+  }
+  .aqi-pill-name  { font-size: 10px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+  .aqi-pill-val   { font-size: 14px; font-weight: 700; color: var(--text); margin-top: 2px; }
+  .aqi-pill-unit  { font-size: 9px; color: var(--muted); }
+
+  .aqi-health {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+    line-height: 1.4;
+  }
+  .aqi-eu-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .aqi-eu-badge {
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .aqi-updated {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+    text-align: right;
+  }
+
+  /* Live clock */
+  .current-time {
+    font-size: 36px;
+    font-weight: 200;
+    letter-spacing: -1px;
+    color: var(--accent);
+    margin-bottom: 2px;
+    font-variant-numeric: tabular-nums;
+  }
+  .current-date-line {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  /* Autocomplete */
+  .search-wrap { position: relative; flex: 1; }
+
+  .suggest-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0; right: 0;
+    background: var(--surface);
+    border: 1.5px solid var(--accent);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    z-index: 100;
+    overflow: hidden;
+    display: none;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+  .suggest-dropdown.open { display: block; }
+
+  .suggest-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid color-mix(in srgb, var(--muted) 15%, transparent);
+    transition: background 0.12s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .suggest-item:last-child { border-bottom: none; }
+  .suggest-item:hover, .suggest-item.active { background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
+
+  .suggest-flag { font-size: 20px; flex-shrink: 0; }
+
+  .suggest-text { min-width: 0; }
+  .suggest-city    { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .suggest-meta    { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .suggest-no-results {
+    padding: 14px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .location-btn {
+    background: none;
+    border: 1.5px solid var(--accent);
+    border-radius: 8px;
+    color: var(--accent);
+    font-size: 18px;
+    width: 42px;
+    cursor: pointer;
+    transition: background 0.15s;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .location-btn:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .location-btn:title { font-size: 12px; }
+
+  .current-country {
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 400;
+  }
+</style>
+</head>
+<body>
+<div class="container" id="app">
+  <h1>🌤 Weather</h1>
+
+  <div class="search-row">
+    <div class="search-wrap">
+      <input class="search-input" id="searchInput" type="text" placeholder="Search any city or country…" value="Tokyo" autocomplete="off" spellcheck="false" />
+      <div class="suggest-dropdown" id="suggestDropdown"></div>
+    </div>
+    <button class="location-btn" id="locBtn" title="Use my location" onclick="useMyLocation()">📍</button>
+    <button class="search-btn" id="searchBtn" onclick="searchCity()">Search</button>
+  </div>
+
+  <div class="error-msg" id="errorMsg"></div>
+  <div class="loading" id="loading"><span class="spinner"></span>Fetching weather…</div>
+
+  <div id="weatherContent" style="display:none">
+    <div class="current-card" id="currentCard">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span id="cityFlag" style="font-size:24px;line-height:1"></span>
+        <div class="current-city" id="cityName"></div>
+        <span class="current-country" id="cityCountry"></span>
+        <span class="fallback-badge" id="fallbackBadge">offline</span>
+      </div>
+      <div class="current-time" id="currentTime"></div>
+      <div class="current-date-line" id="currentDate"></div>
+      <div class="current-main">
+        <div class="current-icon" id="currentIcon"></div>
+        <div>
+          <div class="current-temp" id="currentTemp"></div>
+          <div class="current-desc" id="currentDesc"></div>
+        </div>
+      </div>
+      <div class="current-meta">
+        <span>💧 <span id="humidity">–</span>% humidity</span>
+        <span>💨 <span id="wind">–</span> km/h wind</span>
+        <span>🌡 Feels <span id="feelsLike">–</span>°C</span>
+      </div>
+
+      <!-- AQI Section -->
+      <div class="aqi-section" id="aqiSection" style="display:none">
+        <div class="aqi-header">
+          <span class="aqi-label">Air Quality</span>
+          <span class="aqi-badge" id="aqiBadge"></span>
+        </div>
+        <div class="aqi-bar-track">
+          <div class="aqi-bar-thumb" id="aqiThumb" style="left:0%"></div>
+        </div>
+        <div class="aqi-health" id="aqiHealth"></div>
+        <div class="aqi-pollutants" style="margin-top:10px">
+          <div class="aqi-pill">
+            <div class="aqi-pill-name">PM2.5</div>
+            <div class="aqi-pill-val" id="aqiPm25">–</div>
+            <div class="aqi-pill-unit">µg/m³</div>
+          </div>
+          <div class="aqi-pill">
+            <div class="aqi-pill-name">PM10</div>
+            <div class="aqi-pill-val" id="aqiPm10">–</div>
+            <div class="aqi-pill-unit">µg/m³</div>
+          </div>
+          <div class="aqi-pill">
+            <div class="aqi-pill-name">NO₂</div>
+            <div class="aqi-pill-val" id="aqiNo2">–</div>
+            <div class="aqi-pill-unit">µg/m³</div>
+          </div>
+          <div class="aqi-pill">
+            <div class="aqi-pill-name">O₃</div>
+            <div class="aqi-pill-val" id="aqiO3">–</div>
+            <div class="aqi-pill-unit">µg/m³</div>
+          </div>
+        </div>
+        <div class="aqi-eu-row">
+          <span>EU AQI:</span>
+          <span class="aqi-eu-badge" id="aqiEuBadge"></span>
+          <span id="aqiEuLabel"></span>
+        </div>
+        <div class="aqi-updated" id="aqiUpdated"></div>
+      </div>
+    </div>
+
+    <!-- Hourly temperature -->
+    <div class="hourly-card" id="hourlyCard" style="display:none">
+      <div class="forecast-title" style="margin-bottom:12px">Hourly Temperature</div>
+      <div class="hourly-chart-wrap">
+        <svg id="hourlySvg" width="100%" height="80" style="display:block;overflow:visible"></svg>
+      </div>
+      <div class="hourly-scroll" id="hourlyStrip"></div>
+    </div>
+
+    <div class="forecast-title">5-Day Forecast</div>
+    <div class="forecast-grid" id="forecastGrid"></div>
+  </div>
+</div>
+
+<script>
+// ---- APIs ----
+const GEO_API = "https://geocoding-api.open-meteo.com/v1/search";
+const WX_API  = "https://api.open-meteo.com/v1/forecast";
+const AQ_API  = "https://air-quality-api.open-meteo.com/v1/air-quality";
+
+// ---- Country code → flag emoji ----
+function countryFlag(code) {
+  if (!code || code.length !== 2) return "🌍";
+  return String.fromCodePoint(
+    ...code.toUpperCase().split("").map(c => 0x1F1E6 + c.charCodeAt(0) - 65)
+  );
+}
+
+// ---- WMO weather codes ----
+function wmoInfo(code) {
+  const map = {
+    0:  { label: "Clear sky",         icon: "☀️",  cond: "cond-clear" },
+    1:  { label: "Mainly clear",      icon: "🌤️", cond: "cond-clear" },
+    2:  { label: "Partly cloudy",     icon: "⛅",  cond: "cond-cloudy" },
+    3:  { label: "Overcast",          icon: "☁️",  cond: "cond-cloudy" },
+    45: { label: "Foggy",             icon: "🌫️", cond: "cond-fog" },
+    48: { label: "Icy fog",           icon: "🌫️", cond: "cond-fog" },
+    51: { label: "Light drizzle",     icon: "🌦️", cond: "cond-rain" },
+    53: { label: "Drizzle",           icon: "🌧️", cond: "cond-rain" },
+    55: { label: "Heavy drizzle",     icon: "🌧️", cond: "cond-rain" },
+    61: { label: "Light rain",        icon: "🌦️", cond: "cond-rain" },
+    63: { label: "Rain",              icon: "🌧️", cond: "cond-rain" },
+    65: { label: "Heavy rain",        icon: "🌧️", cond: "cond-rain" },
+    71: { label: "Light snow",        icon: "🌨️", cond: "cond-snow" },
+    73: { label: "Snow",              icon: "❄️",  cond: "cond-snow" },
+    75: { label: "Heavy snow",        icon: "❄️",  cond: "cond-snow" },
+    77: { label: "Snow grains",       icon: "🌨️", cond: "cond-snow" },
+    80: { label: "Light showers",     icon: "🌦️", cond: "cond-rain" },
+    81: { label: "Showers",           icon: "🌧️", cond: "cond-rain" },
+    82: { label: "Heavy showers",     icon: "⛈️",  cond: "cond-rain" },
+    85: { label: "Snow showers",      icon: "🌨️", cond: "cond-snow" },
+    86: { label: "Heavy snow showers",icon: "❄️",  cond: "cond-snow" },
+    95: { label: "Thunderstorm",      icon: "⛈️",  cond: "cond-thunder" },
+    96: { label: "Thunderstorm+hail", icon: "⛈️",  cond: "cond-thunder" },
+    99: { label: "Heavy thunderstorm",icon: "⛈️",  cond: "cond-thunder" },
+  };
+  return map[code] || { label: "Unknown", icon: "🌡", cond: "cond-cloudy" };
+}
+
+// ---- AQI helpers (US AQI scale 0–500 as primary) ----
+function usAqiInfo(aqi) {
+  if (aqi == null) return null;
+  // 6 bands mapped evenly across the 100%-wide bar
+  if (aqi <= 50)  return { label: "Good",                        cls: "aqi-good",      pct: (aqi/50)*16.5,                         tip: "Air quality is satisfactory." };
+  if (aqi <= 100) return { label: "Moderate",                    cls: "aqi-fair",      pct: 16.5 + ((aqi-50)/50)*16.5,             tip: "Acceptable; some pollutants may affect very sensitive people." };
+  if (aqi <= 150) return { label: "Unhealthy for Sensitive Groups", cls: "aqi-moderate", pct: 33 + ((aqi-100)/50)*17,              tip: "Sensitive groups may experience health effects." };
+  if (aqi <= 200) return { label: "Unhealthy",                   cls: "aqi-poor",      pct: 50 + ((aqi-150)/50)*17,                tip: "Everyone may begin to experience health effects." };
+  if (aqi <= 300) return { label: "Very Unhealthy",              cls: "aqi-very-poor", pct: 67 + ((aqi-200)/100)*16,               tip: "Health alert: everyone may experience serious effects." };
+  return                  { label: "Hazardous",                  cls: "aqi-hazardous", pct: Math.min(83 + ((aqi-300)/200)*14, 97), tip: "Health warning of emergency conditions." };
+}
+
+function euAqiInfo(aqi) {
+  if (aqi == null) return null;
+  if (aqi <= 20)  return { label: "Good",         cls: "aqi-good"      };
+  if (aqi <= 40)  return { label: "Fair",          cls: "aqi-fair"      };
+  if (aqi <= 60)  return { label: "Moderate",      cls: "aqi-moderate"  };
+  if (aqi <= 80)  return { label: "Poor",          cls: "aqi-poor"      };
+  if (aqi <= 100) return { label: "Very Poor",     cls: "aqi-very-poor" };
+  return                  { label: "Ext. Poor",    cls: "aqi-hazardous" };
+}
+
+function renderAQI(data) {
+  const section = document.getElementById("aqiSection");
+  if (!data) { section.style.display = "none"; return; }
+
+  const usAqi = data.us_aqi != null ? data.us_aqi : data.aqi;
+  const info  = usAqiInfo(usAqi);
+  if (!info) { section.style.display = "none"; return; }
+
+  const badge = document.getElementById("aqiBadge");
+  badge.className = "aqi-badge " + info.cls;
+  badge.textContent = `US AQI ${Math.round(usAqi)} · ${info.label}`;
+
+  document.getElementById("aqiThumb").style.left = info.pct + "%";
+  document.getElementById("aqiHealth").textContent = info.tip;
+
+  document.getElementById("aqiPm25").textContent = data.pm25 != null ? Math.round(data.pm25) : "–";
+  document.getElementById("aqiPm10").textContent = data.pm10 != null ? Math.round(data.pm10) : "–";
+  document.getElementById("aqiNo2").textContent  = data.no2  != null ? Math.round(data.no2)  : "–";
+  document.getElementById("aqiO3").textContent   = data.o3   != null ? Math.round(data.o3)   : "–";
+
+  // EU AQI secondary badge
+  const euInfo = euAqiInfo(data.eu_aqi);
+  const euBadge = document.getElementById("aqiEuBadge");
+  if (euInfo && data.eu_aqi != null) {
+    euBadge.className     = "aqi-eu-badge " + euInfo.cls;
+    euBadge.textContent   = Math.round(data.eu_aqi);
+    document.getElementById("aqiEuLabel").textContent = euInfo.label;
+  } else {
+    euBadge.textContent = "–";
+    document.getElementById("aqiEuLabel").textContent = "";
+  }
+
+  // Data freshness
+  if (data.time) {
+    const t = new Date(data.time);
+    document.getElementById("aqiUpdated").textContent =
+      "Data as of " + t.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  }
+
+  section.style.display = "block";
+}
+
+async function fetchAQI(lat, lon) {
+  const params = new URLSearchParams({
+    latitude: lat, longitude: lon,
+    current: "european_aqi,us_aqi,pm10,pm2_5,nitrogen_dioxide,ozone",
+    timezone: "auto"
+  });
+  const res = await fetch(`${AQ_API}?${params}`);
+  if (!res.ok) throw new Error("AQI fetch failed");
+  const data = await res.json();
+  const c = data.current;
+  return {
+    us_aqi: c.us_aqi,
+    eu_aqi: c.european_aqi,
+    aqi:    c.us_aqi ?? c.european_aqi,
+    pm25:   c.pm2_5,
+    pm10:   c.pm10,
+    no2:    c.nitrogen_dioxide,
+    o3:     c.ozone,
+    time:   c.time
+  };
+}
+
+// ---- Fallback data (Tokyo, Nov 2024-ish) ----
+const FALLBACK = {
+  city: "Tokyo",
+  lat: 35.6762, lon: 139.6503,
+  current: { temp: 14, feelsLike: 12, humidity: 58, wind: 18, wmo: 1 },
+  aqi: { us_aqi: 54, eu_aqi: 42, aqi: 54, pm25: 12.4, pm10: 22.1, no2: 18.3, o3: 54.7, time: null },
+  daily: [
+    { date: null, maxTemp: 15, minTemp: 8,  wmo: 1 },
+    { date: null, maxTemp: 13, minTemp: 7,  wmo: 61 },
+    { date: null, maxTemp: 11, minTemp: 5,  wmo: 63 },
+    { date: null, maxTemp: 14, minTemp: 6,  wmo: 2  },
+    { date: null, maxTemp: 16, minTemp: 9,  wmo: 0  },
+  ]
+};
+
+function todayPlusDays(n) {
+  const d = new Date(); d.setDate(d.getDate() + n);
+  return d;
+}
+
+function formatDate(d) {
+  return d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+}
+function formatDay(d) {
+  if (!d) return "";
+  return d.toLocaleDateString(undefined, { weekday: "short" });
+}
+
+function setConditionClass(cond) {
+  const els = [document.getElementById("currentCard"), document.getElementById("app")];
+  const all = ["cond-clear","cond-cloudy","cond-rain","cond-snow","cond-thunder","cond-fog"];
+  els.forEach(el => {
+    all.forEach(c => el.classList.remove(c));
+    el.classList.add(cond);
+  });
+}
+
+// ---- Hourly chart ----
+function renderHourly(hourlyTimes, hourlyTemps, hourlyCodes) {
+  const card  = document.getElementById("hourlyCard");
+  const strip = document.getElementById("hourlyStrip");
+  const svg   = document.getElementById("hourlySvg");
+  if (!hourlyTimes || !hourlyTimes.length) { card.style.display = "none"; return; }
+
+  const now      = new Date();
+  const nowHour  = now.getHours();
+  const nowDate  = now.toDateString();
+
+  // Find index of current hour in the data
+  let currentIdx = 0;
+  for (let i = 0; i < hourlyTimes.length; i++) {
+    const t = new Date(hourlyTimes[i]);
+    if (t.toDateString() === nowDate && t.getHours() === nowHour) { currentIdx = i; break; }
+  }
+
+  // Show 24 hours starting from current hour
+  const start = currentIdx;
+  const end   = Math.min(start + 24, hourlyTimes.length);
+  const times = hourlyTimes.slice(start, end);
+  const temps = hourlyTemps.slice(start, end);
+  const codes = hourlyCodes.slice(start, end);
+
+  // ---- SVG line chart ----
+  const W = 480, H = 80, PAD = 18;
+  const minT = Math.min(...temps) - 2;
+  const maxT = Math.max(...temps) + 2;
+  const n    = temps.length;
+
+  const xScale = i => PAD + (i / (n - 1)) * (W - PAD * 2);
+  const yScale = t => H - PAD - ((t - minT) / (maxT - minT)) * (H - PAD * 2);
+
+  // Build smooth SVG path (monotone cubic)
+  function smoothPath(xs, ys) {
+    if (xs.length < 2) return "";
+    let d = `M ${xs[0]} ${ys[0]}`;
+    for (let i = 0; i < xs.length - 1; i++) {
+      const cpx = (xs[i] + xs[i+1]) / 2;
+      d += ` C ${cpx} ${ys[i]}, ${cpx} ${ys[i+1]}, ${xs[i+1]} ${ys[i+1]}`;
+    }
+    return d;
+  }
+
+  const xs = temps.map((_, i) => xScale(i));
+  const ys = temps.map(t => yScale(t));
+  const pathD = smoothPath(xs, ys);
+
+  // Fill area under curve
+  const fillD = pathD + ` L ${xs[n-1]} ${H} L ${xs[0]} ${H} Z`;
+
+  // Compute CSS accent color — read from card border or fallback
+  const accent = getComputedStyle(document.getElementById("hourlyCard"))
+    .getPropertyValue("--accent").trim() || "#3182ce";
+
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.setAttribute("preserveAspectRatio", "none");
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="hGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${accent}" stop-opacity="0.3"/>
+        <stop offset="100%" stop-color="${accent}" stop-opacity="0.03"/>
+      </linearGradient>
+    </defs>
+    <path d="${fillD}" fill="url(#hGrad)" />
+    <path d="${pathD}" fill="none" stroke="${accent}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    ${xs.map((x, i) => {
+      const isNow = i === 0;
+      return isNow
+        ? `<circle cx="${x}" cy="${ys[i]}" r="4" fill="${accent}" stroke="var(--surface,#fff)" stroke-width="2"/>
+           <text x="${x}" y="${ys[i] - 7}" text-anchor="middle" font-size="9" fill="${accent}" font-weight="700">${Math.round(temps[i])}°</text>`
+        : (i % 3 === 0
+          ? `<text x="${x}" y="${ys[i] - 6}" text-anchor="middle" font-size="9" fill="var(--muted,#718096)">${Math.round(temps[i])}°</text>`
+          : "");
+    }).join("")}
+  `;
+
+  // ---- Scrollable strip ----
+  strip.innerHTML = "";
+  times.forEach((timeStr, i) => {
+    const t    = new Date(timeStr);
+    const isNow = i === 0;
+    const label = isNow ? "Now" : t.toLocaleTimeString(undefined, { hour: "numeric", hour12: true });
+    const info  = wmoInfo(codes[i]);
+    const div   = document.createElement("div");
+    div.className = "hour-item" + (isNow ? " now" : "");
+    div.innerHTML = `
+      <div class="h-time">${label}</div>
+      <div class="h-icon">${info.icon}</div>
+      <div class="h-temp">${Math.round(temps[i])}°</div>
+    `;
+    strip.appendChild(div);
+  });
+
+  card.style.display = "block";
+
+  // Scroll strip to now
+  const nowEl = strip.querySelector(".now");
+  if (nowEl) nowEl.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
+}
+
+let clockInterval = null;
+
+function startClock() {
+  function tick() {
+    const now = new Date();
+    document.getElementById("currentTime").textContent =
+      now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    document.getElementById("currentDate").textContent =
+      now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  }
+  tick();
+  if (clockInterval) clearInterval(clockInterval);
+  clockInterval = setInterval(tick, 1000);
+}
+
+function renderWeather(city, current, daily, isFallback, aqiData, meta, hourly) {
+  const info = wmoInfo(current.wmo);
+  document.getElementById("cityName").textContent = city;
+  startClock();
+  document.getElementById("currentIcon").textContent = info.icon;
+  document.getElementById("currentTemp").textContent = Math.round(current.temp) + "°C";
+  document.getElementById("currentDesc").textContent = info.label;
+  document.getElementById("humidity").textContent = Math.round(current.humidity);
+  document.getElementById("wind").textContent = Math.round(current.wind);
+  document.getElementById("feelsLike").textContent = Math.round(current.feelsLike);
+  document.getElementById("fallbackBadge").style.display = isFallback ? "inline" : "none";
+
+  // Country flag + name
+  const flagEl    = document.getElementById("cityFlag");
+  const countryEl = document.getElementById("cityCountry");
+  if (meta && meta.country_code) {
+    flagEl.textContent    = countryFlag(meta.country_code);
+    const parts = [meta.admin1, meta.country].filter(Boolean);
+    countryEl.textContent = parts.join(", ");
+  } else {
+    flagEl.textContent    = "";
+    countryEl.textContent = "";
+  }
+
+  setConditionClass(info.cond);
+
+  const grid = document.getElementById("forecastGrid");
+  grid.innerHTML = "";
+  daily.slice(0, 5).forEach((d, i) => {
+    const fi = wmoInfo(d.wmo);
+    const day = d.date ? new Date(d.date) : todayPlusDays(i);
+    const card = document.createElement("div");
+    card.className = "forecast-card";
+    card.innerHTML = `
+      <div class="fc-day">${formatDay(day)}</div>
+      <div class="fc-icon">${fi.icon}</div>
+      <div class="fc-high">${Math.round(d.maxTemp)}°</div>
+      <div class="fc-low">${Math.round(d.minTemp)}°</div>
+      <div class="fc-desc">${fi.label}</div>
+    `;
+    grid.appendChild(card);
+  });
+
+  renderAQI(aqiData || null);
+
+  if (hourly) {
+    renderHourly(hourly.times, hourly.temps, hourly.codes);
+  } else {
+    document.getElementById("hourlyCard").style.display = "none";
+  }
+
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("weatherContent").style.display = "block";
+}
+
+// ---- Autocomplete ----
+let debounceTimer = null;
+let suggestResults = [];
+let activeIdx = -1;
+
+async function fetchSuggestions(query) {
+  if (query.length < 2) { closeSuggest(); return; }
+  try {
+    const res = await fetch(`${GEO_API}?name=${encodeURIComponent(query)}&count=8&language=en&format=json`);
+    if (!res.ok) return;
+    const data = await res.json();
+    suggestResults = data.results || [];
+    renderSuggest(suggestResults);
+  } catch { closeSuggest(); }
+}
+
+function renderSuggest(results) {
+  const dd = document.getElementById("suggestDropdown");
+  activeIdx = -1;
+  if (!results.length) {
+    dd.innerHTML = `<div class="suggest-no-results">No results found</div>`;
+    dd.classList.add("open");
+    return;
+  }
+  dd.innerHTML = results.map((r, i) => {
+    const flag = countryFlag(r.country_code);
+    const sub  = [r.admin1, r.country].filter(Boolean).join(", ");
+    return `<div class="suggest-item" data-idx="${i}" onmousedown="pickSuggest(${i})">
+      <span class="suggest-flag">${flag}</span>
+      <div class="suggest-text">
+        <div class="suggest-city">${r.name}</div>
+        <div class="suggest-meta">${sub}</div>
+      </div>
+    </div>`;
+  }).join("");
+  dd.classList.add("open");
+}
+
+function closeSuggest() {
+  document.getElementById("suggestDropdown").classList.remove("open");
+  activeIdx = -1;
+}
+
+async function pickSuggest(idx) {
+  const r = suggestResults[idx];
+  if (!r) return;
+  closeSuggest();
+  document.getElementById("searchInput").value = r.name;
+  await loadCity(r.latitude, r.longitude, r.name, r);
+}
+
+async function loadCity(lat, lon, name, meta) {
+  hideError();
+  document.getElementById("weatherContent").style.display = "none";
+  document.getElementById("loading").style.display = "block";
+  document.getElementById("searchBtn").disabled = true;
+
+  try {
+    const wxParams = new URLSearchParams({
+      latitude: lat, longitude: lon,
+      current: "temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code",
+      hourly: "temperature_2m,weather_code",
+      daily: "weather_code,temperature_2m_max,temperature_2m_min",
+      timezone: "auto", forecast_days: 2
+    });
+    const [wxRes, aqiData] = await Promise.all([
+      fetch(`${WX_API}?${wxParams}`),
+      fetchAQI(lat, lon).catch(() => null)
+    ]);
+    if (!wxRes.ok) throw new Error("Weather API error");
+    const data = await wxRes.json();
+    const c = data.current, d = data.daily, h = data.hourly;
+    const hourly = h ? { times: h.time, temps: h.temperature_2m, codes: h.weather_code } : null;
+    renderWeather(name, {
+      temp: c.temperature_2m, feelsLike: c.apparent_temperature,
+      humidity: c.relative_humidity_2m, wind: c.wind_speed_10m, wmo: c.weather_code
+    }, d.time.map((date, i) => ({
+      date, maxTemp: d.temperature_2m_max[i], minTemp: d.temperature_2m_min[i], wmo: d.weather_code[i]
+    })), false, aqiData, meta || {}, hourly);
+  } catch {
+    const fb = FALLBACK;
+    renderWeather(name || fb.city, fb.current, fb.daily.map((d, i) => ({
+      ...d, date: todayPlusDays(i).toISOString().split("T")[0]
+    })), true, fb.aqi, meta || {}, null);
+  } finally {
+    document.getElementById("searchBtn").disabled = false;
+  }
+}
+
+async function useMyLocation() {
+  if (!navigator.geolocation) { showError("Geolocation not supported by this browser."); return; }
+  document.getElementById("locBtn").textContent = "⏳";
+  navigator.geolocation.getCurrentPosition(async pos => {
+    document.getElementById("locBtn").textContent = "📍";
+    const { latitude: lat, longitude: lon } = pos.coords;
+    // Reverse-geocode via Open-Meteo (find nearest city)
+    try {
+      // Use timezone endpoint to infer nearest city label
+      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+      const j = await r.json();
+      const name = j.address?.city || j.address?.town || j.address?.village || j.address?.county || "Current location";
+      const meta = { country: j.address?.country, country_code: j.address?.country_code?.toUpperCase(), admin1: j.address?.state };
+      document.getElementById("searchInput").value = name;
+      await loadCity(lat, lon, name, meta);
+    } catch {
+      document.getElementById("searchInput").value = "Current location";
+      await loadCity(lat, lon, "Current location", {});
+    }
+  }, () => {
+    document.getElementById("locBtn").textContent = "📍";
+    showError("Location access denied.");
+  });
+}
+
+function showError(msg) {
+  const el = document.getElementById("errorMsg");
+  el.textContent = msg;
+  el.style.display = "block";
+  document.getElementById("loading").style.display = "none";
+}
+
+function hideError() {
+  document.getElementById("errorMsg").style.display = "none";
+}
+
+async function searchCity() {
+  closeSuggest();
+  const query = document.getElementById("searchInput").value.trim();
+  if (!query) return;
+  hideError();
+  document.getElementById("weatherContent").style.display = "none";
+  document.getElementById("loading").style.display = "block";
+  document.getElementById("searchBtn").disabled = true;
+
+  try {
+    const res = await fetch(`${GEO_API}?name=${encodeURIComponent(query)}&count=1&language=en&format=json`);
+    if (!res.ok) throw new Error("Geocoding failed");
+    const geo = await res.json();
+    if (!geo.results || !geo.results.length) throw new Error(`"${query}" not found.`);
+    const r = geo.results[0];
+    document.getElementById("searchInput").value = r.name;
+    document.getElementById("searchBtn").disabled = false;
+    await loadCity(r.latitude, r.longitude, r.name, r);
+  } catch (err) {
+    document.getElementById("searchBtn").disabled = false;
+    const fb = FALLBACK;
+    renderWeather(query || fb.city, fb.current, fb.daily.map((d, i) => ({
+      ...d, date: todayPlusDays(i).toISOString().split("T")[0]
+    })), true, fb.aqi, {}, null);
+    showError(err.message.includes("not found") || err.message.includes("not found")
+      ? err.message : "Network error — showing cached data.");
+  }
+}
+
+// ---- Input events ----
+const inp = document.getElementById("searchInput");
+
+inp.addEventListener("input", () => {
+  clearTimeout(debounceTimer);
+  const q = inp.value.trim();
+  if (!q) { closeSuggest(); return; }
+  debounceTimer = setTimeout(() => fetchSuggestions(q), 220);
+});
+
+inp.addEventListener("keydown", e => {
+  const dd = document.getElementById("suggestDropdown");
+  const items = dd.querySelectorAll(".suggest-item");
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    activeIdx = Math.min(activeIdx + 1, items.length - 1);
+    items.forEach((el, i) => el.classList.toggle("active", i === activeIdx));
+  } else if (e.key === "ArrowUp") {
+    e.preventDefault();
+    activeIdx = Math.max(activeIdx - 1, -1);
+    items.forEach((el, i) => el.classList.toggle("active", i === activeIdx));
+  } else if (e.key === "Enter") {
+    if (activeIdx >= 0 && suggestResults[activeIdx]) {
+      pickSuggest(activeIdx);
+    } else {
+      searchCity();
+    }
+  } else if (e.key === "Escape") {
+    closeSuggest();
+  }
+});
+
+inp.addEventListener("blur", () => setTimeout(closeSuggest, 150));
+inp.addEventListener("focus", () => {
+  if (inp.value.trim().length >= 2 && suggestResults.length) {
+    document.getElementById("suggestDropdown").classList.add("open");
+  }
+});
+
+// Load Tokyo on start
+window.addEventListener("DOMContentLoaded", () => searchCity());
+</script>
+</body>
+</html>
